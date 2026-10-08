@@ -24,16 +24,13 @@ typedef struct {
 
 #define ELEM(g, r, c) ((g)->values[(r) * (g)->cols + (c)])
 
-/* ---------- loading the input file ---------- */
+/* ---------- loading the input file (fopen/fclose/fscanf/fprintf only, per the brief) ---------- */
 
 static int next_dims(FILE *fp, int *r, int *c) {
-    char buf[256];
-    do {
-        if (!fgets(buf, sizeof(buf), fp)) return 0; // nothing left to read
-    } while (buf[0] == '\n' || buf[0] == '\r');
-
-    if (sscanf(buf, "%d,%d", r, c) != 2 || *r <= 0 || *c <= 0) {
-        fprintf(stderr, "bad dimension line: '%s'\n", buf);
+    int got = fscanf(fp, " %d,%d", r, c);
+    if (got == EOF) return 0;
+    if (got != 2 || *r <= 0 || *c <= 0) {
+        fprintf(stderr, "bad or missing dimension header\n");
         return -1;
     }
     return 1;
@@ -45,29 +42,16 @@ static Grid *read_grid_values(FILE *fp, int r, int c) {
     g->cols = c;
     g->values = malloc(sizeof(double) * r * c);
 
-    char buf[4096];
     for (int row = 0; row < r; row++) {
-        if (!fgets(buf, sizeof(buf), fp)) {
-            fprintf(stderr, "file cut off early - wanted %d rows, only got %d\n", r, row);
-            free(g->values); free(g);
-            return NULL;
-        }
-        char *piece = strtok(buf, ",\r\n");
         for (int col = 0; col < c; col++) {
-            if (!piece) {
-                fprintf(stderr, "row %d is missing values (wanted %d)\n", row, c);
-                free(g->values); free(g);
-                return NULL;
-            }
-            char *end;
-            double val = strtod(piece, &end);
-            if (end == piece) {
-                fprintf(stderr, "'%s' on row %d isn't a number\n", piece, row);
+            double val;
+            if (fscanf(fp, " %lf", &val) != 1) {
+                fprintf(stderr, "row %d is missing a numeric value at column %d (or the file ended early)\n", row, col);
                 free(g->values); free(g);
                 return NULL;
             }
             ELEM(g, row, col) = val;
-            piece = strtok(NULL, ",\r\n");
+            fscanf(fp, ",");
         }
     }
     return g;
@@ -115,8 +99,6 @@ static void drop_grid(Grid *g) {
     free(g);
 }
 
-// don't bother spinning up more threads than there are output rows to split
-// between them
 static int thread_budget(int wanted, int rows_available) {
     return wanted < rows_available ? wanted : rows_available;
 }
