@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-// the cuda crypt function takes in a raw password of ONLY 2 letters (ONLY LOWERCASE)
-// and 2 numbers. It outputs a 10-character encrypted password (plus '\0').
 char* cudaCrypt(char* rawPassword) {
-
-    static char newPassword[11]; // use static as a local pointer (as in your original code)
+    static char newPassword[11];
 
     newPassword[0] = rawPassword[0] + 2;
     newPassword[1] = rawPassword[0] - 2;
@@ -21,13 +18,13 @@ char* cudaCrypt(char* rawPassword) {
     newPassword[10] = '\0';
 
     for(int i = 0; i < 10; i++) {
-        if(i >= 0 && i < 6) { // checking all lower case letter limits
+        if(i >= 0 && i < 6) {
             if(newPassword[i] > 122) {
                 newPassword[i] = (newPassword[i] - 122) + 97;
             } else if(newPassword[i] < 97) {
                 newPassword[i] = (97 - newPassword[i]) + 97;
             }
-        } else { // checking number section
+        } else {
             if(newPassword[i] > 57) {
                 newPassword[i] = (newPassword[i] - 57) + 48;
             } else if(newPassword[i] < 48) {
@@ -47,34 +44,25 @@ int main(void) {
         return 1;
     }
 
-    // Open output file
     FILE *fp = fopen("passwords.txt", "w");
     if (fp == NULL) {
         perror("Error opening output file");
         return 1;
     }
 
-    // Seed random number generator
     srand((unsigned int) time(NULL));
 
-    // Buffer for raw password (2 letters + 2 digits + '\0')
     char rawPassword[5];
     rawPassword[4] = '\0';
 
     for (int i = 0; i < n; i++) {
-        // Generate 2 random lowercase letters
         rawPassword[0] = 'a' + (rand() % 26);
         rawPassword[1] = 'a' + (rand() % 26);
-
-        // Generate 2 random digits
         rawPassword[2] = '0' + (rand() % 10);
         rawPassword[3] = '0' + (rand() % 10);
 
-        // Encrypt using your existing function
         char *encrypted = cudaCrypt(rawPassword);
 
-        // Write to file: raw and encrypted
-        // Format: aa99 -> something
         fprintf(fp, "%s\n", encrypted);
     }
 
@@ -84,4 +72,3 @@ int main(void) {
 
     return 0;
 }
-
